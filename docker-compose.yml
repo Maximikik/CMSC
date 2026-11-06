@@ -1,0 +1,62 @@
+# Sitewright: ASP.NET Core API + Angular editor (nginx) + PostgreSQL.
+#   cp .env.example .env   (then edit it)
+#   docker compose up -d --build
+# Editor and API: http://localhost:8080      Published sites: http://localhost:8081/<site-address>/
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sitewright
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: sitewright
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sitewright -d sitewright"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Default: Host=db;Database=sitewright;Username=sitewright;Password=${POSTGRES_PASSWORD};Gss Encryption Mode=Disable
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env (at least 32 random characters)}
+      Storage__PublicSitesUrl: ${PUBLIC_SITES_URL:-http://localhost:8081}
+      Auth__AllowRegistration: ${ALLOW_REGISTRATION:-false}
+      Auth__SeedAdminEmail: ${ADMIN_EMAIL:-}
+      Auth__SeedAdminPassword: ${ADMIN_PASSWORD:-}
+    volumes:
+      - sitedata:/data
+      - keys:/keys
+    # The aspnet image has no curl, so probe the port with bash.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /health HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+      start_period: 15s
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${EDITOR_PORT:-8080}:8080"
+      - "${SITES_PORT:-8081}:8081"
+    environment:
+      API_UPSTREAM: api:8080
+    volumes:
+      - sitedata:/data:ro
+
+volumes:
+  pgdata:
+  sitedata:
+  keys:

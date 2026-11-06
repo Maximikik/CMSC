@@ -1,0 +1,67 @@
+# Admin app and API: http://localhost:8080
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 24m;
+    server_tokens off;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-Frame-Options "DENY" always;
+
+    location /api/ {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+    location = /health {
+        proxy_pass http://${API_UPSTREAM}/health;
+    }
+    location = /index.html {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+    }
+    # Angular build output has content hashes in the file names, so it can be cached for a year.
+    location ~* \.(?:js|css)$ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        try_files $uri =404;
+    }
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# Published sites and uploaded images: http://localhost:8081
+# Kept on its own port (use its own domain in production) so scripts in a published site can never reach the admin app's storage.
+server {
+    listen 8081;
+    server_name _;
+    root /data/published;
+    server_tokens off;
+    autoindex off;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+    location /_assets/ {
+        alias /data/assets/;
+        add_header Cache-Control "public, max-age=3600" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Content-Security-Policy "sandbox" always;
+        add_header Access-Control-Allow-Origin "*" always;
+    }
+    location = / { return 404; }
+    location / {
+        index index.html;
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    }
+}
