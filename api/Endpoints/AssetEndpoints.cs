@@ -23,7 +23,7 @@ public static class AssetEndpoints
 
     public static void Map(WebApplication app)
     {
-        var g = app.MapGroup("/api/sites/{id:guid}/assets").RequireAuthorization();
+        var g = app.MapGroup("/api/sites/{id:guid}/assets").RequireAuthorization().WithTags("Images");
 
         g.MapGet("", async (Guid id, ClaimsPrincipal u, AppDb db, SiteFiles files) =>
         {

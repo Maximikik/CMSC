@@ -21,10 +21,11 @@ public static class AuthEndpoints
 
     public static void Map(WebApplication app)
     {
-        var g = app.MapGroup("/api/auth");
+        var g = app.MapGroup("/api/auth").WithTags("Auth");
 
         g.MapGet("/status", async (AppDb db, IOptions<AuthOptions> o) =>
-            Results.Ok(new { hasUsers = await db.Users.AnyAsync(), allowRegistration = o.Value.AllowRegistration }));
+            Results.Ok(new { hasUsers = await db.Users.AnyAsync(), allowRegistration = o.Value.AllowRegistration }))
+            .WithSummary("Is this a fresh install, and is sign-up open?").AllowAnonymous();
 
         g.MapPost("/register", async (RegisterRequest r, UserManager<AppUser> um, AppDb db, TokenService tokens, IOptions<AuthOptions> o) =>
         {
@@ -40,7 +41,7 @@ public static class AuthEndpoints
             if (first) await um.AddToRoleAsync(user, "Admin");
             var dto = await ToDto(um, user);
             return Results.Ok(new { token = tokens.Create(user, dto.IsAdmin), user = dto });
-        }).RequireRateLimiting("auth");
+        }).RequireRateLimiting("auth").WithSummary("Create an account (first user becomes administrator)").AllowAnonymous();
 
         g.MapPost("/login", async (LoginRequest r, UserManager<AppUser> um, TokenService tokens) =>
         {
@@ -56,13 +57,13 @@ public static class AuthEndpoints
             await um.ResetAccessFailedCountAsync(user);
             var dto = await ToDto(um, user);
             return Results.Ok(new { token = tokens.Create(user, dto.IsAdmin), user = dto });
-        }).RequireRateLimiting("auth");
+        }).RequireRateLimiting("auth").WithSummary("Sign in and get a token").AllowAnonymous();
 
         g.MapGet("/me", async (ClaimsPrincipal p, UserManager<AppUser> um) =>
         {
             var u = await um.FindByIdAsync(p.UserId().ToString());
             return u is null ? Results.Unauthorized() : Results.Ok(await ToDto(um, u));
-        }).RequireAuthorization();
+        }).RequireAuthorization().WithSummary("The signed-in user");
 
         g.MapPost("/password", async (ChangePasswordRequest r, ClaimsPrincipal p, UserManager<AppUser> um) =>
         {
@@ -70,7 +71,7 @@ public static class AuthEndpoints
             if (u is null) return Results.Unauthorized();
             var res = await um.ChangePasswordAsync(u, r.Current, r.New);
             return res.Succeeded ? Results.NoContent() : Results.Problem(string.Join(" ", res.Errors.Select(e => e.Description)), statusCode: 400);
-        }).RequireAuthorization().RequireRateLimiting("auth");
+        }).RequireAuthorization().RequireRateLimiting("auth").WithSummary("Change your own password");
     }
 }
 
@@ -81,7 +82,7 @@ public static class UserEndpoints
 
     public static void Map(WebApplication app)
     {
-        var g = app.MapGroup("/api/users").RequireAuthorization(p => p.RequireClaim("role", "Admin"));
+        var g = app.MapGroup("/api/users").RequireAuthorization(p => p.RequireClaim("role", "Admin")).WithTags("Users (administrators)");
 
         g.MapGet("", async (UserManager<AppUser> um, AppDb db) =>
         {

@@ -28,6 +28,7 @@ services:
       ConnectionStrings__Default: Host=db;Database=sitewright;Username=sitewright;Password=${POSTGRES_PASSWORD};Gss Encryption Mode=Disable
       Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env (at least 32 random characters)}
       Storage__PublicSitesUrl: ${PUBLIC_SITES_URL:-http://localhost:8081}
+      Docs__Enabled: ${ENABLE_API_DOCS:-true}
       Auth__AllowRegistration: ${ALLOW_REGISTRATION:-false}
       Auth__SeedAdminEmail: ${ADMIN_EMAIL:-}
       Auth__SeedAdminPassword: ${ADMIN_PASSWORD:-}

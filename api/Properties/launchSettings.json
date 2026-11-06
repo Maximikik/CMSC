@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Sitewright.Api": {
+      "commandName": "Project",
+      "applicationUrl": "http://localhost:5080",
+      "launchUrl": "api/docs",
+      "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
+    }
+  }
+}

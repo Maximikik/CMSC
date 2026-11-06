@@ -50,8 +50,10 @@ export class ApiService {
 export function errMsg(e: any, fallback = 'Something went wrong. Try again.'): string {
   const d = e?.error;
   if (d?.detail) return d.detail;
-  if (typeof d === 'string' && d) return d;
   if (e?.status === 0) return 'Cannot reach the server. Check your connection.';
+  // An HTML body means the request never reached the API (for example `ng serve` without its /api proxy, or a wrong address).
+  if (typeof d === 'string' && /^\s*<(!doctype|html)/i.test(d)) return 'The API did not answer at /api. Check that it is running, and that the dev proxy (web/proxy.conf.json) points at it.';
+  if (typeof d === 'string' && d) return d;
   if (e?.status === 413) return 'That file is too large.';
   return fallback;
 }

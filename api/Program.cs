@@ -73,6 +73,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 });
 builder.Services.AddAuthorization();
 
+builder.Services.AddApiDocs();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<SiteFiles>();
 
@@ -101,7 +102,10 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", async (AppDb db) => await db.Database.CanConnectAsync() ? Results.Ok(new { status = "ok" }) : Results.StatusCode(503)).AllowAnonymous();
+app.MapGet("/health", async (AppDb db) => await db.Database.CanConnectAsync() ? Results.Ok(new { status = "ok" }) : Results.StatusCode(503)).AllowAnonymous().WithTags("Health").WithSummary("Is the API up and the database reachable?");
+// Interactive docs at /api/docs. On by default in Development; elsewhere set Docs__Enabled=true.
+if (app.Configuration.GetValue("Docs:Enabled", app.Environment.IsDevelopment())) app.MapApiDocs();
+
 AuthEndpoints.Map(app);
 UserEndpoints.Map(app);
 SiteEndpoints.Map(app);
@@ -137,7 +141,7 @@ static class Startup
             }
             catch (Exception e) when (attempt < 20)
             {
-                log.LogWarning("Database not ready (attempt {Attempt}): {Message}", attempt, e.Message);
+                log.LogWarning("Database not ready (attempt {Attempt}): {Message}", attempt, e.GetBaseException().Message);
                 await Task.Delay(3000);
             }
         }

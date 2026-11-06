@@ -44,7 +44,7 @@ public static class SiteEndpoints
 
     public static void Map(WebApplication app)
     {
-        var g = app.MapGroup("/api/sites").RequireAuthorization();
+        var g = app.MapGroup("/api/sites").RequireAuthorization().WithTags("Sites");
 
         g.MapGet("", async (ClaimsPrincipal u, AppDb db, SiteFiles files) =>
         {

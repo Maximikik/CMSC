@@ -49,20 +49,30 @@ e2e/e2e.js           browser checks against a running stack (41)
 
 How publishing works: the editor generates the finished page (`exportHTML`), the API checks the draft is the version it was made from, stores a snapshot in `SiteVersions`, and writes `published/<slug>/index.html` atomically. The published page is one static file (all pages inside, switched with `#page-address`), so nginx serves it with no moving parts.
 
+## API documentation
+
+An interactive reference where you can try every endpoint is built in:
+
+- With Docker: <http://localhost:8080/api/docs> (switch off with `ENABLE_API_DOCS=false` in `.env`)
+- With `dotnet run`: <http://localhost:5080/api/docs>
+- The raw OpenAPI document: `/api/openapi/v1.json` (import it into Postman, Insomnia or a client generator)
+
+To call protected endpoints, run `POST /api/auth/login` in the page, copy the `token` from the response, and paste it under **Authentication > Bearer Token**.
+
 ## Develop without Docker
 
 ```bash
-# 1. PostgreSQL running locally, then:
+# 1. PostgreSQL running locally. The API's Development settings expect
+#    Host=localhost, user postgres, password postgres; override with
+#    ConnectionStrings__Default if yours differ. The database is created for you.
 cd api
-export ConnectionStrings__Default="Host=127.0.0.1;Database=sitewright;Username=sitewright;Password=..."
-export Jwt__Key="any-random-string-of-32-or-more-characters"
-export Storage__PublishedDir=/tmp/sw/published Storage__AssetsDir=/tmp/sw/assets Storage__KeysDir=/tmp/sw/keys
-export ASPNETCORE_URLS=http://127.0.0.1:5080
-dotnet run                      # creates the database if it is missing, then applies migrations
+dotnet run                      # http://localhost:5080, docs at /api/docs, applies migrations on start
 
 # 2. In another terminal:
-cd web && npm install && npx ng serve --proxy-config proxy.conf.json
+cd web && npm install && npm start     # http://localhost:4200, forwards /api to http://localhost:5080
 ```
+
+If the sign-in page ever shows "The API did not answer", the API is not running on port 5080 or the dev proxy (`web/proxy.conf.json`) points elsewhere.
 
 Add a migration after changing entities: `dotnet ef migrations add <Name> -o Data/Migrations` (install the tool with `dotnet tool install --global dotnet-ef`).
 Run the API checks against an empty database with `scripts/smoke.sh`. The browser checks need Playwright and a running stack: `node e2e/e2e.js`.
