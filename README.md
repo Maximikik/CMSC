@@ -58,7 +58,7 @@ export ConnectionStrings__Default="Host=127.0.0.1;Database=sitewright;Username=s
 export Jwt__Key="any-random-string-of-32-or-more-characters"
 export Storage__PublishedDir=/tmp/sw/published Storage__AssetsDir=/tmp/sw/assets Storage__KeysDir=/tmp/sw/keys
 export ASPNETCORE_URLS=http://127.0.0.1:5080
-dotnet run                      # applies migrations on start
+dotnet run                      # creates the database if it is missing, then applies migrations
 
 # 2. In another terminal:
 cd web && npm install && npx ng serve --proxy-config proxy.conf.json
@@ -73,6 +73,7 @@ Run the API checks against an empty database with `scripts/smoke.sh`. The browse
 - **Editors are trusted with the published page.** The Custom HTML block puts whatever an editor wrote into the live site. The editor itself never runs it (the canvas shows a placeholder and Preview runs in a sandboxed iframe), and published sites live on their own origin.
 - **Sign-up is closed by default.** Only the first account can self-register. Set `ALLOW_REGISTRATION=true` only on a private network.
 - **Login tokens last 8 hours** and are re-checked against the database on every request, so deleting a user or removing admin rights applies immediately. There is no email-based password reset; administrators reset passwords on the Users page.
+- **The API creates its database on first start** if it does not exist (the database role needs the `CREATEDB` permission; the Compose Postgres user has it). Migrations are applied automatically after that.
 - **Back up two volumes:** `pgdata` (database) and `sitedata` (published sites and uploads). The `keys` volume holds the data-protection keys.
 
 ## Analytics later (ClickHouse)

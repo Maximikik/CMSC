@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.IdentityModel.Tokens;
 using Sitewright.Api.Auth;
 using Sitewright.Api.Data;
@@ -121,7 +123,18 @@ static class Startup
         // The database container may still be starting. Retry for about a minute before giving up.
         for (var attempt = 1; ; attempt++)
         {
-            try { await db.Database.MigrateAsync(); break; }
+            try
+            {
+                // Create the database itself when it does not exist yet (needs a role with CREATEDB), then bring the schema up to date.
+                var creator = db.GetService<IRelationalDatabaseCreator>();
+                if (!await creator.ExistsAsync())
+                {
+                    log.LogInformation("Database does not exist. Creating it.");
+                    await creator.CreateAsync();
+                }
+                await db.Database.MigrateAsync();
+                break;
+            }
             catch (Exception e) when (attempt < 20)
             {
                 log.LogWarning("Database not ready (attempt {Attempt}): {Message}", attempt, e.Message);
